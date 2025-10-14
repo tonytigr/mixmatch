@@ -56,7 +56,7 @@ void initializeRandomSeed(){
     xAxis + yAxis + zAxis
   );
   // Set the seed
-  srand(seed); 
+  srand(seed);
 }
 
 
@@ -64,21 +64,22 @@ void initializeRandomSeed(){
 void vexcodeInit() {
 
   // Initializing random seed.
-  initializeRandomSeed(); 
+  initializeRandomSeed();
 }
 
 
-
+// define variable for remote controller enable/disable
+bool RemoteControlCodeEnabled = true;
 
 #pragma endregion VEXcode Generated Robot Configuration
 
 //----------------------------------------------------------------------------
-//                                                                            
-//    Module:       main.cpp                                                  
-//    Author:       {author}                                                  
-//    Created:      {date}                                                    
-//    Description:  IQ project                                                
-//                                                                            
+//
+//    Module:       main.cpp
+//    Author:       {author}
+//    Created:      {date}
+//    Description:  IQ project
+//
 //----------------------------------------------------------------------------
 
 // Include the IQ Library
@@ -87,105 +88,178 @@ void vexcodeInit() {
 // Allows for easier use of the VEX Library
 using namespace vex;
 
-int pneumatic21state = 0;
-int pneumatic22state = 0;
-int pneumatic71state = 0;
-int pneumatic72state = 0;
-
-void controllerbuttonLDownPressed(){
-    PinArm.spin(forward);
+#pragma region LEFT CLAW
+bool leftClaw = true;//
+bool leftClawLast = false;
+bool isLeftClawChange(){
+  if(leftClaw!=leftClawLast){
+    leftClawLast = leftClaw;
+    return true;
+  }
+  return false;
 }
-void controllerbuttonLDownReleased(){
-  PinArm.stop();
-}
-
-void controllerbuttonRDownPressed(){
-    PinArm.spin(reverse);  
-}
-void controllerbuttonRDownReleased(){
-  PinArm.stop();
-}
-
 void controllerbuttonLUpPressed(){
-    if (pneumatic71state == 1){
-        Pneumatic7.retract(cylinder1);
-        pneumatic71state = 0;      
-    }else{
-        Pneumatic7.extend(cylinder1);
-        pneumatic71state = 1;
+    leftClaw = !leftClaw;
+}
+#pragma endregion LEFT CLAW
 
-    }
+#pragma region RIGHT CLAW
+bool rightClaw = true;
+bool rightClawLast = false;
+bool isRightClawChange(){
+  if(rightClaw!=rightClawLast){
+    rightClawLast = rightClaw;
+    return true;
+  }
+  return false;
 }
 void controllerbuttonRUpPressed(){
-    if (pneumatic22state == 1){
-        Pneumatic2.retract(cylinder2);
-        pneumatic22state = 0;      
-    }else{
-        Pneumatic2.extend(cylinder2);
-        pneumatic22state = 1;
+    rightClaw = !rightClaw;
+}
+#pragma endregion RIGHT CLAW
 
-    }
-
+#pragma region BEAM CLAW
+bool beamClaw = false;
+bool beamClawLast = true;
+bool isBeamClawChange(){
+  if(beamClaw!=beamClawLast){
+    beamClawLast = beamClaw;
+    return true;
+  }
+  return false;
 }
 void controllerbuttonEUpPressed(){
-      if (pneumatic72state == 1){
-        Pneumatic7.retract(cylinder2);
-        pneumatic72state = 0;
-      }else{
-        Pneumatic7.extend(cylinder2);
-        pneumatic72state = 1;
-
-      }
+    beamClaw = !beamClaw;
 }
+#pragma endregion BEAM CLAW
 
+#pragma region Push CLAW
+bool pushClaw = true;
+bool pushClawLast = false;
+bool isPushClawChange(){
+  if(pushClaw!=pushClawLast){
+    pushClawLast = pushClaw;
+    return true;
+  }
+  return false;
+}
 void controllerbuttonEDownPressed(){
-    if (pneumatic21state == 1){
-        Pneumatic2.retract(cylinder1);
-        pneumatic21state = 0;      
-    }else{
-        Pneumatic2.extend(cylinder1);
-        pneumatic21state = 1;
-
-    }
+    pushClaw = !pushClaw;
 }
-// Global variables
-bool f_buttons_control_motors_stopped = true;
+#pragma endregion Push CLAW
+
+#pragma region BEAM ARM
+const int beam_arm_position 		[4] = { -50, 50, 550 , 950 };
+int beamArmLevel = 0;
+int beamArmLastLevel = 1;
+bool isBeamArmChange(){
+  if(beamArmLevel!=beamArmLastLevel){
+    beamArmLastLevel = beamArmLevel;
+    return true;
+  }
+  return false;
+}
+void controllerbuttonLDownPressed(){
+  beamArmLevel = fmod(beamArmLevel+1,4);
+}
+void controllerbuttonRDownPressed(){
+  beamArmLevel = fmod(beamArmLevel+3,4);
+}
+#pragma endregion BEAM ARM
+
+#pragma region PIN ARM
+const int pin_arm_position 	[4] = { 30, -260 ,-360, -800 };
+int pinArmLevel = 0;
+int pinArmLastLevel = 1;
+bool isPinArmChange(){
+  if(pinArmLevel!=pinArmLastLevel){
+    pinArmLastLevel = pinArmLevel;
+    return true;
+  }
+  return false;
+}
+void controllerbuttonFUpPressed(){
+  pinArmLevel = fmod(pinArmLevel+1,4);
+}
+void controllerbuttonFDownPressed(){
+  pinArmLevel = fmod(pinArmLevel+3,4);
+
+}
+#pragma endregion PIN ARM
+
+//arm controller
+//move arms to attended positions based on instructions
+void ArmActionController(){
+	while (true){
+			if(isBeamArmChange()){
+        BeamArm.spinToPosition(beam_arm_position[beamArmLevel],degrees,false);
+        printf("beam arm set to level %d \n",beamArmLevel);
+ 			}
+      if(abs(PinArm.position(degrees)-pin_arm_position[pinArmLevel])<10 && pinArmLevel==1){
+        pushClaw = false;
+      }else{
+        pushClaw = true;
+      }
+      if(isPinArmChange()){
+        PinArm.spinToPosition(pin_arm_position[pinArmLevel],degrees,false);
+        printf("Pin arm set to level %d \n",pinArmLevel);
+ 			}
+      if(isLeftClawChange()){
+        if (leftClaw ){
+          Pneumatic7.extend(cylinder1);
+        }else{
+          Pneumatic7.retract(cylinder1);
+        }
+      }
+      if(isRightClawChange()){
+        if (rightClaw ){
+          Pneumatic2.extend(cylinder2);
+        }else{
+          Pneumatic2.retract(cylinder2);
+        }
+      }
+      if(isBeamClawChange()){
+        if (beamClaw ){
+          Pneumatic7.extend(cylinder2);
+        }else{
+          Pneumatic7.retract(cylinder2);
+        }
+      }
+      if(isPushClawChange()){
+        if (pushClaw ){
+          Pneumatic2.extend(cylinder1);
+        }else{
+          Pneumatic2.retract(cylinder1);
+        }
+      }
+			wait(10,msec);
+	}
+}
+
 bool drivetrain_l_needs_to_be_stopped_controller = false;
 bool drivetrain_r_needs_to_be_stopped_controller = false;
 bool remote_control_code_enabled = true;
 
 int main() {
   // Initializing Robot Configuration. DO NOT REMOVE!
-  Pneumatic2.pumpOn();
-  Pneumatic7.pumpOn();
-  Pneumatic7.retract(cylinder2);
-  Pneumatic2.extend(cylinder2);
-  Pneumatic7.extend(cylinder1);
-  Pneumatic2.retract(cylinder1);
-  BeamArm.setVelocity(100, percent);
-  BeamArm.setMaxTorque(100, percent);
-  PinArm.setVelocity(70, percent);
-  PinArm.setMaxTorque(100, percent);
-  Drivetrain.setTurnVelocity(70, percent);
-  Drivetrain.setDriveVelocity(100, percent);
-  BeamArm.setStopping(hold);
-  PinArm.setStopping(hold);
+
   //system event handlers
+  thread armController = thread(ArmActionController);
 
   // Register controller callbacks
   Controller.ButtonLDown.pressed(controllerbuttonLDownPressed);
-  Controller.ButtonLDown.released(controllerbuttonLDownReleased);
   Controller.ButtonRDown.pressed(controllerbuttonRDownPressed);
-  Controller.ButtonRDown.released(controllerbuttonRDownReleased);
   Controller.ButtonEUp.pressed(controllerbuttonEUpPressed);
   Controller.ButtonRUp.pressed(controllerbuttonRUpPressed);
   Controller.ButtonEDown.pressed(controllerbuttonEDownPressed);
   Controller.ButtonLUp.pressed(controllerbuttonLUpPressed);
+  Controller.ButtonFUp.pressed(controllerbuttonFUpPressed);
+  Controller.ButtonFDown.pressed(controllerbuttonFDownPressed);
 
   // Delay to ensure events register properly
   wait(15, msec);
 
- while (true) {
+  while (true) {
     if (remote_control_code_enabled) {
 
       // Calculate drivetrain speeds from joystick positions
@@ -226,20 +300,9 @@ int main() {
         RightDriveSmart.spin(forward);
       }
 
-      // --- Beam arm control using FUp/FDown buttons ---
-      if (Controller.ButtonFUp.pressing()) {
-        BeamArm.spin(forward);
-        f_buttons_control_motors_stopped = false;
-      } else if (Controller.ButtonFDown.pressing()) {
-        BeamArm.spin(reverse);
-        f_buttons_control_motors_stopped = false;
-      } else if (!f_buttons_control_motors_stopped) {
-        BeamArm.stop();
-        f_buttons_control_motors_stopped = true;
-      }
     }
-
+    printf("distance to beam arm %.2f \n",Distance9.objectDistance(mm));
     // Wait before repeating (20 ms)
     wait(20, msec);
-  } 
+  }
 }
