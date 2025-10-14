@@ -29,20 +29,20 @@ brain Brain;
 // Robot configuration code.
 inertial BrainInertial = inertial();
 controller Controller = controller();
-motor LeftDriveSmart = motor(PORT10, 1, false);
-motor RightDriveSmart = motor(PORT4, 1, true);
+motor LeftDriveSmart = motor(PORT10, 1, true);
+motor RightDriveSmart = motor(PORT4, 1, false);
 drivetrain Drivetrain = drivetrain(LeftDriveSmart, RightDriveSmart, 200, 173, 76, mm, 1);
-motor BeamArmMotorA = motor(PORT11, false);
-motor BeamArmMotorB = motor(PORT5, true);
+motor BeamArmMotorA = motor(PORT12, false);
+motor BeamArmMotorB = motor(PORT6, true);
 motor_group BeamArm = motor_group(BeamArmMotorA, BeamArmMotorB);
 
-motor PinArmMotorA = motor(PORT12, false);
-motor PinArmMotorB = motor(PORT6, true);
+motor PinArmMotorA = motor(PORT11, false);
+motor PinArmMotorB = motor(PORT5, true);
 motor_group PinArm = motor_group(PinArmMotorA, PinArmMotorB);
 
 pneumatic Pneumatic2 = pneumatic(PORT2);
 pneumatic Pneumatic7 = pneumatic(PORT7);
-sonar Distance9 = sonar(PORT9);
+distance Distance9 = distance(PORT9);
 
 
 // generating and setting random seed
@@ -88,35 +88,20 @@ bool RemoteControlCodeEnabled = true;
 // Allows for easier use of the VEX Library
 using namespace vex;
 
-#pragma region LEFT CLAW
-bool leftClaw = true;//
-bool leftClawLast = false;
-bool isLeftClawChange(){
-  if(leftClaw!=leftClawLast){
-    leftClawLast = leftClaw;
+#pragma region PIN CLAW
+bool pinClaw = true;//
+bool pinClawLast = false;
+bool isPinClawChange(){
+  if(pinClaw!=pinClawLast){
+    pinClawLast = pinClaw;
     return true;
   }
   return false;
 }
-void controllerbuttonLUpPressed(){
-    leftClaw = !leftClaw;
+void pinClawEvent(){
+    pinClaw = !pinClaw;
 }
-#pragma endregion LEFT CLAW
-
-#pragma region RIGHT CLAW
-bool rightClaw = true;
-bool rightClawLast = false;
-bool isRightClawChange(){
-  if(rightClaw!=rightClawLast){
-    rightClawLast = rightClaw;
-    return true;
-  }
-  return false;
-}
-void controllerbuttonRUpPressed(){
-    rightClaw = !rightClaw;
-}
-#pragma endregion RIGHT CLAW
+#pragma endregion PIN CLAW
 
 #pragma region BEAM CLAW
 bool beamClaw = false;
@@ -128,7 +113,7 @@ bool isBeamClawChange(){
   }
   return false;
 }
-void controllerbuttonEUpPressed(){
+void beamClawEvent(){
     beamClaw = !beamClaw;
 }
 #pragma endregion BEAM CLAW
@@ -143,13 +128,13 @@ bool isPushClawChange(){
   }
   return false;
 }
-void controllerbuttonEDownPressed(){
+void pushClawEvent(){
     pushClaw = !pushClaw;
 }
 #pragma endregion Push CLAW
 
 #pragma region BEAM ARM
-const int beam_arm_position 		[4] = { -50, 50, 550 , 950 };
+const int beam_arm_position 		[4] = { -50, 50, 580 , 950 };
 int beamArmLevel = 0;
 int beamArmLastLevel = 1;
 bool isBeamArmChange(){
@@ -159,16 +144,16 @@ bool isBeamArmChange(){
   }
   return false;
 }
-void controllerbuttonLDownPressed(){
+void beamArmUpEvent(){
   beamArmLevel = fmod(beamArmLevel+1,4);
 }
-void controllerbuttonRDownPressed(){
+void beamArmDownEvent(){
   beamArmLevel = fmod(beamArmLevel+3,4);
 }
 #pragma endregion BEAM ARM
 
 #pragma region PIN ARM
-const int pin_arm_position 	[4] = { 30, -260 ,-360, -800 };
+const int pin_arm_position 	[4] = { 30, -250 ,-370, -780 };
 int pinArmLevel = 0;
 int pinArmLastLevel = 1;
 bool isPinArmChange(){
@@ -178,10 +163,10 @@ bool isPinArmChange(){
   }
   return false;
 }
-void controllerbuttonFUpPressed(){
+void pinArmUpEvent(){
   pinArmLevel = fmod(pinArmLevel+1,4);
 }
-void controllerbuttonFDownPressed(){
+void pinArmDownEvent(){
   pinArmLevel = fmod(pinArmLevel+3,4);
 
 }
@@ -204,17 +189,12 @@ void ArmActionController(){
         PinArm.spinToPosition(pin_arm_position[pinArmLevel],degrees,false);
         printf("Pin arm set to level %d \n",pinArmLevel);
  			}
-      if(isLeftClawChange()){
-        if (leftClaw ){
+      if(isPinClawChange()){
+        if (pinClaw ){
           Pneumatic7.extend(cylinder1);
-        }else{
-          Pneumatic7.retract(cylinder1);
-        }
-      }
-      if(isRightClawChange()){
-        if (rightClaw ){
           Pneumatic2.extend(cylinder2);
         }else{
+          Pneumatic7.retract(cylinder1);
           Pneumatic2.retract(cylinder2);
         }
       }
@@ -242,19 +222,32 @@ bool remote_control_code_enabled = true;
 
 int main() {
   // Initializing Robot Configuration. DO NOT REMOVE!
+  Pneumatic2.pumpOn();
+  Pneumatic7.pumpOn();
+  BeamArm.setVelocity(100, percent);
+  BeamArm.setMaxTorque(100, percent);
+  PinArm.setVelocity(70, percent);
+  PinArm.setMaxTorque(100, percent);
+  Drivetrain.setTurnVelocity(70, percent);
+  Drivetrain.setDriveVelocity(100, percent);
+  BeamArm.setStopping(hold);
+  PinArm.setStopping(hold);
 
   //system event handlers
   thread armController = thread(ArmActionController);
 
   // Register controller callbacks
-  Controller.ButtonLDown.pressed(controllerbuttonLDownPressed);
-  Controller.ButtonRDown.pressed(controllerbuttonRDownPressed);
-  Controller.ButtonEUp.pressed(controllerbuttonEUpPressed);
-  Controller.ButtonRUp.pressed(controllerbuttonRUpPressed);
-  Controller.ButtonEDown.pressed(controllerbuttonEDownPressed);
-  Controller.ButtonLUp.pressed(controllerbuttonLUpPressed);
-  Controller.ButtonFUp.pressed(controllerbuttonFUpPressed);
-  Controller.ButtonFDown.pressed(controllerbuttonFDownPressed);
+  Controller.ButtonLUp.pressed(pinArmUpEvent);
+  Controller.ButtonLDown.pressed(pinArmDownEvent);
+
+  Controller.ButtonRUp.pressed(beamArmUpEvent);
+  Controller.ButtonRDown.pressed(beamArmDownEvent);
+
+  Controller.ButtonEUp.pressed(pinClawEvent);
+  //Controller.ButtonEDown.pressed(controllerbuttonEDownPressed);
+
+  Controller.ButtonFUp.pressed(beamClawEvent);
+  //Controller.ButtonFDown.pressed(controllerbuttonFDownPressed);
 
   // Delay to ensure events register properly
   wait(15, msec);
@@ -301,7 +294,7 @@ int main() {
       }
 
     }
-    printf("distance to beam arm %.2f \n",Distance9.objectDistance(mm));
+    //printf("distance to beam arm %.2f \n",Distance9.objectDistance(mm));
     // Wait before repeating (20 ms)
     wait(20, msec);
   }
