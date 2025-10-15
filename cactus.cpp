@@ -29,8 +29,8 @@ brain Brain;
 // Robot configuration code.
 inertial BrainInertial = inertial();
 controller Controller = controller();
-motor LeftDriveSmart = motor(PORT10, 1, true);
-motor RightDriveSmart = motor(PORT4, 1, false);
+motor LeftDriveSmart = motor(PORT10, 1, false);
+motor RightDriveSmart = motor(PORT4, 1, true);
 drivetrain Drivetrain = drivetrain(LeftDriveSmart, RightDriveSmart, 200, 173, 76, mm, 1);
 motor BeamArmMotorA = motor(PORT12, false);
 motor BeamArmMotorB = motor(PORT6, true);
@@ -42,7 +42,7 @@ motor_group PinArm = motor_group(PinArmMotorA, PinArmMotorB);
 
 pneumatic Pneumatic2 = pneumatic(PORT2);
 pneumatic Pneumatic7 = pneumatic(PORT7);
-distance Distance9 = distance(PORT9);
+sonar Distance9 = sonar(PORT9);
 
 
 // generating and setting random seed
@@ -88,8 +88,17 @@ bool RemoteControlCodeEnabled = true;
 // Allows for easier use of the VEX Library
 using namespace vex;
 
+#pragma region Global
+  bool pinClaw = true;
+  bool beamClaw = false;
+  bool pushClaw = true;
+  const int beam_arm_position 		[4] = { 0, 350, 880 , 1050 };
+  int beamArmLevel = 0;
+  const int pin_arm_position 	[4] = { 0, -250 ,-370, -780 };
+  int pinArmLevel = 0;
+#pragma endregion Global
+
 #pragma region PIN CLAW
-bool pinClaw = true;//
 bool pinClawLast = false;
 bool isPinClawChange(){
   if(pinClaw!=pinClawLast){
@@ -104,7 +113,6 @@ void pinClawEvent(){
 #pragma endregion PIN CLAW
 
 #pragma region BEAM CLAW
-bool beamClaw = false;
 bool beamClawLast = true;
 bool isBeamClawChange(){
   if(beamClaw!=beamClawLast){
@@ -114,12 +122,20 @@ bool isBeamClawChange(){
   return false;
 }
 void beamClawEvent(){
-    beamClaw = !beamClaw;
+  if(beamClaw==false){
+    if(beamArmLevel==0){
+        beamClaw = true;
+        wait(100,msec);
+        beamArmLevel =1;
+    }
+  }else{
+    beamClaw = false;
+  }
+
 }
 #pragma endregion BEAM CLAW
 
 #pragma region Push CLAW
-bool pushClaw = true;
 bool pushClawLast = false;
 bool isPushClawChange(){
   if(pushClaw!=pushClawLast){
@@ -134,8 +150,6 @@ void pushClawEvent(){
 #pragma endregion Push CLAW
 
 #pragma region BEAM ARM
-const int beam_arm_position 		[4] = { -50, 50, 580 , 950 };
-int beamArmLevel = 0;
 int beamArmLastLevel = 1;
 bool isBeamArmChange(){
   if(beamArmLevel!=beamArmLastLevel){
@@ -145,30 +159,48 @@ bool isBeamArmChange(){
   return false;
 }
 void beamArmUpEvent(){
-  beamArmLevel = fmod(beamArmLevel+1,4);
+  int targetLevel = fmod(beamArmLevel+1,4);
+  //move beam arm only when pin arm is not flipped
+  if(targetLevel==0 || pinArmLevel !=3){
+    beamArmLevel = targetLevel;
+  }
 }
 void beamArmDownEvent(){
-  beamArmLevel = fmod(beamArmLevel+3,4);
+  int targetLevel = fmod(beamArmLevel+3,4);
+  ///move beam arm only when pin arm is not flipped
+  if(targetLevel==0 || pinArmLevel !=3){
+    beamArmLevel = targetLevel;
+  }
 }
 #pragma endregion BEAM ARM
 
 #pragma region PIN ARM
-const int pin_arm_position 	[4] = { 30, -250 ,-370, -780 };
-int pinArmLevel = 0;
 int pinArmLastLevel = 1;
 bool isPinArmChange(){
   if(pinArmLevel!=pinArmLastLevel){
+    if(pinArmLastLevel==3 && beamClaw){
+      beamArmLevel = 1;
+    }
     pinArmLastLevel = pinArmLevel;
     return true;
   }
   return false;
 }
 void pinArmUpEvent(){
-  pinArmLevel = fmod(pinArmLevel+1,4);
+  int targetLevel = fmod(pinArmLevel+1,4);
+  //flip pin arm only when beam arm is down
+  if(targetLevel==3 && beamArmLevel==1){
+    beamArmLevel =0;
+  }
+  pinArmLevel = targetLevel;
 }
 void pinArmDownEvent(){
-  pinArmLevel = fmod(pinArmLevel+3,4);
-
+  int targetLevel = fmod(pinArmLevel+3,4);
+  //flip pin arm only when beam arm is down
+  if(targetLevel==3 && beamArmLevel==1){
+    beamArmLevel =0;
+  }
+  pinArmLevel = targetLevel;
 }
 #pragma endregion PIN ARM
 
@@ -180,7 +212,7 @@ void ArmActionController(){
         BeamArm.spinToPosition(beam_arm_position[beamArmLevel],degrees,false);
         printf("beam arm set to level %d \n",beamArmLevel);
  			}
-      if(abs(PinArm.position(degrees)-pin_arm_position[pinArmLevel])<10 && pinArmLevel==1){
+      if(abs(PinArm.position(degrees)-pin_arm_position[pinArmLevel])<10 && (pinArmLevel==1 ||pinArmLevel==2)){
         pushClaw = false;
       }else{
         pushClaw = true;
@@ -212,8 +244,51 @@ void ArmActionController(){
           Pneumatic2.retract(cylinder1);
         }
       }
-			wait(10,msec);
+      //printf("distance to beam arm %.2f \n",Distance9.objectDistance(mm));
+      //printf("pin arm position %.2f \n",PinArm.current(percent));
+      printf("beam arm position %.2f \n",BeamArm.position(degrees));
+
+			wait(100,msec);
 	}
+}
+void vexcodeInit1() {
+
+  Pneumatic2.pumpOn();
+  Pneumatic7.pumpOn();
+  Drivetrain.setTurnVelocity(70, percent);
+  Drivetrain.setDriveVelocity(100, percent);
+	//reset Beam Arm
+  BeamArm.setMaxTorque(50, percent);
+	BeamArm.setVelocity(100,percent);
+  BeamArm.setStopping(hold);
+	while (true){
+    BeamArm.spin(reverse);
+		if(BeamArm.current(percent) > 70) {
+      BeamArm.stop();
+      BeamArm.spinFor(forward,150,degrees);
+			BeamArm.stop();
+      BeamArm.setMaxTorque(100, percent);
+	    BeamArm.setPosition(0,degrees);
+			break;
+		}
+	}
+  //reset Pin Arm
+  PinArm.setMaxTorque(50, percent);
+	PinArm.setVelocity(20,percent);
+  PinArm.setStopping(hold);
+	while (true){
+    PinArm.spin(forward);
+		if(PinArm.current(percent) > 30) {
+      PinArm.spinFor(reverse,10,degrees);
+			PinArm.stop();
+      PinArm.setVelocity(70,percent);
+      PinArm.setMaxTorque(100, percent);
+      PinArm.setPosition(0,degrees);
+			break;
+		}
+	}
+  // Initializing random seed.
+  initializeRandomSeed();
 }
 
 bool drivetrain_l_needs_to_be_stopped_controller = false;
@@ -221,20 +296,11 @@ bool drivetrain_r_needs_to_be_stopped_controller = false;
 bool remote_control_code_enabled = true;
 
 int main() {
-  // Initializing Robot Configuration. DO NOT REMOVE!
-  Pneumatic2.pumpOn();
-  Pneumatic7.pumpOn();
-  BeamArm.setVelocity(100, percent);
-  BeamArm.setMaxTorque(100, percent);
-  PinArm.setVelocity(70, percent);
-  PinArm.setMaxTorque(100, percent);
-  Drivetrain.setTurnVelocity(70, percent);
-  Drivetrain.setDriveVelocity(100, percent);
-  BeamArm.setStopping(hold);
-  PinArm.setStopping(hold);
-
   //system event handlers
   thread armController = thread(ArmActionController);
+  // Initializing Robot Configuration. DO NOT REMOVE!
+  vexcodeInit();
+  vexcodeInit1();
 
   // Register controller callbacks
   Controller.ButtonLUp.pressed(pinArmUpEvent);
@@ -251,6 +317,7 @@ int main() {
 
   // Delay to ensure events register properly
   wait(15, msec);
+  Brain.playSound(tada);
 
   while (true) {
     if (remote_control_code_enabled) {
@@ -259,9 +326,9 @@ int main() {
       // left = AxisA + AxisC
       // right = AxisA - AxisC
       int drivetrain_left_side_speed =
-          Controller.AxisA.position() + Controller.AxisC.position();
-      int drivetrain_right_side_speed =
           Controller.AxisA.position() - Controller.AxisC.position();
+      int drivetrain_right_side_speed =
+          Controller.AxisA.position() + Controller.AxisC.position();
 
       // --- Deadband control for left motor ---
       if (drivetrain_left_side_speed < 5 && drivetrain_left_side_speed > -5) {
@@ -294,8 +361,7 @@ int main() {
       }
 
     }
-    //printf("distance to beam arm %.2f \n",Distance9.objectDistance(mm));
-    // Wait before repeating (20 ms)
+   // Wait before repeating (20 ms)
     wait(20, msec);
   }
 }
