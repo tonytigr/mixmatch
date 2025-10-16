@@ -29,20 +29,20 @@ brain Brain;
 // Robot configuration code.
 inertial BrainInertial = inertial();
 controller Controller = controller();
-motor LeftDriveSmart = motor(PORT10, 1, false);
-motor RightDriveSmart = motor(PORT4, 1, true);
+motor LeftDriveSmart = motor(PORT4, 1, false);
+motor RightDriveSmart = motor(PORT10, 1, true);
 drivetrain Drivetrain = drivetrain(LeftDriveSmart, RightDriveSmart, 200, 173, 76, mm, 1);
 motor BeamArmMotorA = motor(PORT12, false);
 motor BeamArmMotorB = motor(PORT6, true);
 motor_group BeamArm = motor_group(BeamArmMotorA, BeamArmMotorB);
 
-motor PinArmMotorA = motor(PORT11, false);
-motor PinArmMotorB = motor(PORT5, true);
+motor PinArmMotorA = motor(PORT5, false);
+motor PinArmMotorB = motor(PORT11, true);
 motor_group PinArm = motor_group(PinArmMotorA, PinArmMotorB);
 
 pneumatic Pneumatic2 = pneumatic(PORT2);
 pneumatic Pneumatic7 = pneumatic(PORT7);
-sonar Distance9 = sonar(PORT9);
+distance Distance9 = distance(PORT9);
 
 
 // generating and setting random seed
@@ -92,127 +92,126 @@ using namespace vex;
   bool pinClaw = true;
   bool beamClaw = false;
   bool pushClaw = true;
-  const int beam_arm_position 		[4] = { 0, 350, 880 , 1050 };
+  const int beam_arm_position 		[4] = { 0, 200, 660 , 1080 };
   int beamArmLevel = 0;
-  const int pin_arm_position 	[4] = { 0, -250 ,-370, -780 };
+  const int pin_arm_position 	[4] = { 0, 280 ,390, 800 };
   int pinArmLevel = 0;
 #pragma endregion Global
 
 #pragma region PIN CLAW
-bool pinClawLast = false;
-bool isPinClawChange(){
-  if(pinClaw!=pinClawLast){
-    pinClawLast = pinClaw;
-    return true;
+  bool pinClawLast = false;
+  bool isPinClawChange(){
+    if(pinClaw!=pinClawLast){
+      pinClawLast = pinClaw;
+      return true;
+    }
+    return false;
   }
-  return false;
-}
-void pinClawEvent(){
-    pinClaw = !pinClaw;
-}
+  void pinClawEvent(){
+      pinClaw = !pinClaw;
+  }
 #pragma endregion PIN CLAW
 
 #pragma region BEAM CLAW
-bool beamClawLast = true;
-bool isBeamClawChange(){
-  if(beamClaw!=beamClawLast){
-    beamClawLast = beamClaw;
-    return true;
-  }
-  return false;
-}
-void beamClawEvent(){
-  if(beamClaw==false){
-    if(beamArmLevel==0){
-        beamClaw = true;
-        wait(100,msec);
-        beamArmLevel =1;
+  bool beamClawLast = true;
+  bool isBeamClawChange(){
+    if(beamClaw!=beamClawLast){
+      beamClawLast = beamClaw;
+      return true;
     }
-  }else{
-    beamClaw = false;
+    return false;
   }
-
-}
+  void beamClawEvent(){
+    if(beamClaw==false){
+      if(beamArmLevel==0){
+          beamClaw = true;
+          wait(100,msec);
+          beamArmLevel =1;
+      }
+    }else{
+      beamClaw = false;
+    }
+  }
 #pragma endregion BEAM CLAW
 
 #pragma region Push CLAW
-bool pushClawLast = false;
-bool isPushClawChange(){
-  if(pushClaw!=pushClawLast){
-    pushClawLast = pushClaw;
-    return true;
+  bool pushClawLast = false;
+  bool isPushClawChange(){
+    if(pushClaw!=pushClawLast){
+      pushClawLast = pushClaw;
+      return true;
+    }
+    return false;
   }
-  return false;
-}
-void pushClawEvent(){
-    pushClaw = !pushClaw;
-}
+  void pushClawEvent(){
+      pushClaw = !pushClaw;
+  }
 #pragma endregion Push CLAW
 
 #pragma region BEAM ARM
-int beamArmLastLevel = 1;
-bool isBeamArmChange(){
-  if(beamArmLevel!=beamArmLastLevel){
-    beamArmLastLevel = beamArmLevel;
-    return true;
+  int beamArmLastLevel = 1;
+  bool isBeamArmChange(){
+    if(beamArmLevel!=beamArmLastLevel){
+      beamArmLastLevel = beamArmLevel;
+      return true;
+    }
+    return false;
   }
-  return false;
-}
-void beamArmUpEvent(){
-  int targetLevel = fmod(beamArmLevel+1,4);
-  //move beam arm only when pin arm is not flipped
-  if(targetLevel==0 || pinArmLevel !=3){
-    beamArmLevel = targetLevel;
+  void beamArmUpEvent(){
+    int targetLevel = fmod(beamArmLevel+1,4);
+    //move beam arm only when pin arm is not flipped
+    if(targetLevel==0 || pinArmLevel !=3){
+      beamArmLevel = targetLevel;
+    }
   }
-}
-void beamArmDownEvent(){
-  int targetLevel = fmod(beamArmLevel+3,4);
-  ///move beam arm only when pin arm is not flipped
-  if(targetLevel==0 || pinArmLevel !=3){
-    beamArmLevel = targetLevel;
+  void beamArmDownEvent(){
+    int targetLevel = fmod(beamArmLevel+3,4);
+    ///move beam arm only when pin arm is not flipped
+    if(targetLevel==0 || pinArmLevel !=3){
+      beamArmLevel = targetLevel;
+    }
   }
-}
 #pragma endregion BEAM ARM
 
 #pragma region PIN ARM
-int pinArmLastLevel = 1;
-bool isPinArmChange(){
-  if(pinArmLevel!=pinArmLastLevel){
-    if(pinArmLastLevel==3 && beamClaw){
-      beamArmLevel = 1;
+  int pinArmLastLevel = 1;
+  bool isPinArmChange(){
+    if(pinArmLevel!=pinArmLastLevel){
+      //recover beam arm carry position
+      if(pinArmLastLevel==3 && beamClaw){
+        beamArmLevel = 1;
+      }
+      pinArmLastLevel = pinArmLevel;
+      return true;
     }
-    pinArmLastLevel = pinArmLevel;
-    return true;
+    return false;
   }
-  return false;
-}
-void pinArmUpEvent(){
-  int targetLevel = fmod(pinArmLevel+1,4);
-  //flip pin arm only when beam arm is down
-  if(targetLevel==3 && beamArmLevel==1){
-    beamArmLevel =0;
+  void pinArmUpEvent(){
+    int targetLevel = fmod(pinArmLevel+1,4);
+    //flip pin arm only when beam arm is down
+    if(targetLevel==3 && beamArmLevel==1){
+      beamArmLevel =0;
+    }
+    pinArmLevel = targetLevel;
   }
-  pinArmLevel = targetLevel;
-}
-void pinArmDownEvent(){
-  int targetLevel = fmod(pinArmLevel+3,4);
-  //flip pin arm only when beam arm is down
-  if(targetLevel==3 && beamArmLevel==1){
-    beamArmLevel =0;
+  void pinArmDownEvent(){
+    int targetLevel = fmod(pinArmLevel+3,4);
+    //flip pin arm only when beam arm is down
+    if(targetLevel==3 && beamArmLevel==1){
+      beamArmLevel =0;
+    }
+    pinArmLevel = targetLevel;
   }
-  pinArmLevel = targetLevel;
-}
 #pragma endregion PIN ARM
 
 //arm controller
-//move arms to attended positions based on instructions
 void ArmActionController(){
 	while (true){
 			if(isBeamArmChange()){
         BeamArm.spinToPosition(beam_arm_position[beamArmLevel],degrees,false);
         printf("beam arm set to level %d \n",beamArmLevel);
  			}
-      if(abs(PinArm.position(degrees)-pin_arm_position[pinArmLevel])<10 && (pinArmLevel==1 ||pinArmLevel==2)){
+      if(abs(PinArm.position(degrees)-pin_arm_position[pinArmLevel])<10 && (pinArmLevel==1)){
         pushClaw = false;
       }else{
         pushClaw = true;
@@ -277,9 +276,9 @@ void vexcodeInit1() {
 	PinArm.setVelocity(20,percent);
   PinArm.setStopping(hold);
 	while (true){
-    PinArm.spin(forward);
+    PinArm.spin(reverse);
 		if(PinArm.current(percent) > 30) {
-      PinArm.spinFor(reverse,10,degrees);
+      PinArm.spinFor(forward,10,degrees);
 			PinArm.stop();
       PinArm.setVelocity(70,percent);
       PinArm.setMaxTorque(100, percent);
@@ -326,9 +325,9 @@ int main() {
       // left = AxisA + AxisC
       // right = AxisA - AxisC
       int drivetrain_left_side_speed =
-          Controller.AxisA.position() - Controller.AxisC.position();
-      int drivetrain_right_side_speed =
           Controller.AxisA.position() + Controller.AxisC.position();
+      int drivetrain_right_side_speed =
+          Controller.AxisA.position() - Controller.AxisC.position();
 
       // --- Deadband control for left motor ---
       if (drivetrain_left_side_speed < 5 && drivetrain_left_side_speed > -5) {
