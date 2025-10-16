@@ -131,8 +131,8 @@ using namespace vex;
     if(beamClaw==false){
       if(beamArmLevel==0){
           beamClaw = true;
-          wait(100,msec);
-          beamArmLevel =1;
+          // wait(100,msec);
+          // beamArmLevel =1;
       }
     }else{
       beamClaw = false;
@@ -292,7 +292,7 @@ using namespace vex;
           BeamArm.spinFor(forward, beamArmOffset*20,degrees,false);
           beamArmOffset = 0;
         }
-        if(abs(PinArm.position(degrees)-pin_arm_position[pinArmLevel])<10 && (pinArmLevel==1)){
+        if(abs(PinArm.position(degrees)-pin_arm_position[pinArmLevel])<50 && (pinArmLevel==1)){
           pushClaw = false;
         }else{
           pushClaw = true;
