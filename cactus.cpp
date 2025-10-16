@@ -94,8 +94,10 @@ using namespace vex;
   bool pushClaw = true;
   const int beam_arm_position 		[4] = { 0, 200, 660 , 1080 };
   int beamArmLevel = 0;
+  int beamArmOffset = 0;
   const int pin_arm_position 	[4] = { 0, 280 ,390, 800 };
   int pinArmLevel = 0;
+  int pinArmOffset = 0;
 
   bool drivetrain_l_needs_to_be_stopped_controller = false;
   bool drivetrain_r_needs_to_be_stopped_controller = false;
@@ -161,6 +163,7 @@ using namespace vex;
   }
   void beamArmUpEvent(){
     if(Controller.ButtonFDown.pressing()==1){
+      beamArmOffset = beamArmOffset+1;
       BeamArm.spinFor(forward,20,degrees,false);
     }else{
       int targetLevel = fmod(beamArmLevel+1,4);
@@ -172,7 +175,7 @@ using namespace vex;
   }
   void beamArmDownEvent(){
     if(Controller.ButtonFDown.pressing()==1){
-      BeamArm.spinFor(reverse,20,degrees,false);
+       beamArmOffset = beamArmOffset-1;
     }else{
       int targetLevel = fmod(beamArmLevel+3,4);
       if(targetLevel!=3){
@@ -200,7 +203,7 @@ using namespace vex;
   }
   void pinArmUpEvent(){
     if(Controller.ButtonEDown.pressing()==1){
-      PinArm.spinFor(forward,10,degrees,false);
+      pinArmOffset = pinArmOffset+1;
     }else{
       int targetLevel = fmod(pinArmLevel+1,4);
       //flip pin arm only when beam arm is down
@@ -212,7 +215,7 @@ using namespace vex;
   }
   void pinArmDownEvent(){
     if(Controller.ButtonEDown.pressing()==1){
-      PinArm.spinFor(reverse,10,degrees,false);
+      pinArmOffset = pinArmOffset-1;
     }else{
       int targetLevel = fmod(pinArmLevel+3,4);
       if(targetLevel!=3){
@@ -282,8 +285,12 @@ using namespace vex;
   void ArmActionController(){
     while (true){
         if(isBeamArmChange()){
+          beamArmOffset = 0;
           BeamArm.spinToPosition(beam_arm_position[beamArmLevel],degrees,false);
           printf("beam arm set to level %d \n",beamArmLevel);
+        }else if(beamArmOffset !=0){
+          BeamArm.spinFor(forward, beamArmOffset*20,degrees,false);
+          beamArmOffset = 0;
         }
         if(abs(PinArm.position(degrees)-pin_arm_position[pinArmLevel])<10 && (pinArmLevel==1)){
           pushClaw = false;
@@ -291,8 +298,12 @@ using namespace vex;
           pushClaw = true;
         }
         if(isPinArmChange()){
+          pinArmOffset = 0;
           PinArm.spinToPosition(pin_arm_position[pinArmLevel],degrees,false);
           printf("Pin arm set to level %d \n",pinArmLevel);
+        }else if(pinArmOffset !=0){
+          PinArm.spinFor(forward, pinArmOffset*10,degrees,false);
+          pinArmOffset = 0;
         }
         if(isPinClawChange()){
           if (pinClaw ){
@@ -325,7 +336,7 @@ using namespace vex;
     }
   }
   void driveActionController(){
-    if (remote_control_code_enabled) {
+    while (remote_control_code_enabled) {
 
       // Calculate drivetrain speeds from joystick positions
       // left = AxisA + AxisC
@@ -364,8 +375,8 @@ using namespace vex;
         RightDriveSmart.setVelocity(drivetrain_right_side_speed, percent);
         RightDriveSmart.spin(forward);
       }
+      wait(10, msec);
     }
-    wait(20, msec);
   }
 
 #pragma endregion Action
