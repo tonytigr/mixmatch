@@ -158,17 +158,28 @@ using namespace vex;
     return false;
   }
   void beamArmUpEvent(){
-    int targetLevel = fmod(beamArmLevel+1,4);
-    //move beam arm only when pin arm is not flipped
-    if(targetLevel==0 || pinArmLevel !=3){
-      beamArmLevel = targetLevel;
+    if(Controller.ButtonFDown.pressing()==1){
+      BeamArm.spinFor(forward,20,degrees,false);
+    }else{
+      int targetLevel = fmod(beamArmLevel+1,4);
+      //move beam arm only when pin arm is not flipped
+      if(targetLevel==0 || pinArmLevel !=3){
+        beamArmLevel = targetLevel;
+      }
     }
   }
   void beamArmDownEvent(){
-    int targetLevel = fmod(beamArmLevel+3,4);
-    ///move beam arm only when pin arm is not flipped
-    if(targetLevel==0 || pinArmLevel !=3){
-      beamArmLevel = targetLevel;
+    if(Controller.ButtonFDown.pressing()==1){
+      BeamArm.spinFor(reverse,20,degrees,false);
+    }else{
+      int targetLevel = fmod(beamArmLevel+3,4);
+      if(targetLevel!=3){
+        targetLevel=0;
+      }
+      ///move beam arm only when pin arm is not flipped
+      if(targetLevel==0 || pinArmLevel !=3){
+        beamArmLevel = targetLevel;
+      }
     }
   }
 #pragma endregion BEAM ARM
@@ -187,20 +198,31 @@ using namespace vex;
     return false;
   }
   void pinArmUpEvent(){
-    int targetLevel = fmod(pinArmLevel+1,4);
-    //flip pin arm only when beam arm is down
-    if(targetLevel==3 && beamArmLevel==1){
-      beamArmLevel =0;
+    if(Controller.ButtonEDown.pressing()==1){
+      PinArm.spinFor(forward,10,degrees,false);
+    }else{
+      int targetLevel = fmod(pinArmLevel+1,4);
+      //flip pin arm only when beam arm is down
+      if(targetLevel==3 && beamArmLevel==1){
+        beamArmLevel =0;
+      }
+      pinArmLevel = targetLevel;
     }
-    pinArmLevel = targetLevel;
   }
   void pinArmDownEvent(){
-    int targetLevel = fmod(pinArmLevel+3,4);
-    //flip pin arm only when beam arm is down
-    if(targetLevel==3 && beamArmLevel==1){
-      beamArmLevel =0;
+    if(Controller.ButtonEDown.pressing()==1){
+      PinArm.spinFor(reverse,10,degrees,false);
+    }else{
+      int targetLevel = fmod(pinArmLevel+3,4);
+      if(targetLevel!=3){
+        targetLevel=0;
+      }
+      //flip pin arm only when beam arm is down
+      if(targetLevel==3 && beamArmLevel==1){
+        beamArmLevel =0;
+      }
+      pinArmLevel = targetLevel;
     }
-    pinArmLevel = targetLevel;
   }
 #pragma endregion PIN ARM
 
@@ -309,10 +331,9 @@ int main() {
   Controller.ButtonRDown.pressed(beamArmDownEvent);
 
   Controller.ButtonEUp.pressed(pinClawEvent);
-  //Controller.ButtonEDown.pressed(controllerbuttonEDownPressed);
 
   Controller.ButtonFUp.pressed(beamClawEvent);
-  //Controller.ButtonFDown.pressed(controllerbuttonFDownPressed);
+
 
   // Delay to ensure events register properly
   wait(15, msec);
