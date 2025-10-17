@@ -44,10 +44,6 @@ pneumatic Pneumatic2 = pneumatic(PORT2);
 pneumatic Pneumatic7 = pneumatic(PORT7);
 distance BeamDistance = distance(PORT9);
 touchled TouchLED = touchled(PORT8);
-/*vex-vision-config:begin*/
-vision::signature Vision1__RED_PIN = vision::signature (1, 14739, 15239, 14989,695, 1141, 918,2.5, 0);
-vision Vision1 = vision (PORT1, 50, Vision1__RED_PIN);
-/*vex-vision-config:end*/
 
 
 // generating and setting random seed
@@ -254,9 +250,7 @@ using namespace vex;
 #pragma region Action
 
   void initializeMotors() {
-    if (Vision1.installed()==1) {
-      Brain.Screen.print("Connected");
-    }
+
     Pneumatic2.pumpOn();
     Pneumatic7.pumpOn();
     Drivetrain.setTurnVelocity(70, percent);
@@ -352,15 +346,6 @@ using namespace vex;
         //printf("pin arm position %.2f \n",PinArm.current(percent));
         //printf("beam arm position %.2f \n",BeamArm.position(degrees));
         //printf("distance to beam arm %.2f \n",BeamDistance.objectDistance(mm));
-        Vision1.takeSnapshot(Vision1__RED_PIN);
-        if (Vision1.objects[0].exists) {
-          int centerX = Vision1.largestObject.centerX;
-          printf("vision angle %d \n",centerX);
-          if (140 < centerX && centerX < 180) {
-            Drivetrain.stop();
-          }
-        }
-
         wait(20,msec);
     }
   }
