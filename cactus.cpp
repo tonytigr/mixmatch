@@ -42,7 +42,8 @@ motor_group PinArm = motor_group(PinArmMotorA, PinArmMotorB);
 
 pneumatic Pneumatic2 = pneumatic(PORT2);
 pneumatic Pneumatic7 = pneumatic(PORT7);
-distance Distance9 = distance(PORT9);
+distance BeamDistance = distance(PORT9);
+touchled TouchLED = touchled(PORT8);
 
 
 // generating and setting random seed
@@ -207,10 +208,12 @@ using namespace vex;
     }else{
       int targetLevel = fmod(pinArmLevel+1,4);
       //flip pin arm only when beam arm is down
-      if(targetLevel==3 && beamArmLevel==1){
-        beamArmLevel =0;
+      if(targetLevel!=3 || beamArmLevel<2){
+        if(targetLevel==3 && beamArmLevel==1){
+          beamArmLevel =0;
+        }
+        pinArmLevel = targetLevel;
       }
-      pinArmLevel = targetLevel;
     }
   }
   void pinArmDownEvent(){
@@ -299,6 +302,11 @@ using namespace vex;
         }
         if(isPinArmChange()){
           pinArmOffset = 0;
+          // if(pinArmLevel==3 ){
+          //   PinArm.setVelocity(20,percent);
+          // }else{
+          //   PinArm.setVelocity(70,percent);
+          // }
           PinArm.spinToPosition(pin_arm_position[pinArmLevel],degrees,false);
           printf("Pin arm set to level %d \n",pinArmLevel);
         }else if(pinArmOffset !=0){
@@ -328,9 +336,15 @@ using namespace vex;
             Pneumatic2.retract(cylinder1);
           }
         }
-        //printf("distance to beam arm %.2f \n",Distance9.objectDistance(mm));
+        printf("distance to beam arm %.2f \n",BeamDistance.objectDistance(mm));
+        if(BeamDistance.objectDistance(mm)>212-5 && BeamDistance.objectDistance(mm)<212+5){
+          TouchLED.setColor(green);
+          Brain.playSound(headlightsOn);
+        }else{
+          TouchLED.setColor(orange);
+        }
         //printf("pin arm position %.2f \n",PinArm.current(percent));
-        printf("beam arm position %.2f \n",BeamArm.position(degrees));
+        //printf("beam arm position %.2f \n",BeamArm.position(degrees));
 
         wait(100,msec);
     }
